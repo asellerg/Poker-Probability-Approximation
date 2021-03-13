@@ -7,6 +7,10 @@ Created on Sat May 26 23:32:10 2018
 """
 
 import numpy as np
+# from poker_ai.poker.evaluation import evaluator
+# from poker_ai.poker import card
+#
+# _evaluator = evaluator.Evaluator()
 
 class pokerDeck():
     def __init__(self):
@@ -70,6 +74,12 @@ class pokerDeck():
         
         evaluationHand = list(self.table)
         evaluationHand.extend(hand)
+
+        # poker_ai_hand = [card.ppa_to_int(c) for c in hand]
+        # hand_rank = evaluator._five_mat([poker_ai_hand])
+        # rank_class = _evaluator.get_rank_class(hand_rank)
+        # return _evaluator.class_to_string(rank_class).lower(), None
+        
         
         NumSuitSplit = []
         for i in range(len(evaluationHand)): NumSuitSplit.append(evaluationHand[i].split("_"))
@@ -253,7 +263,7 @@ class pokerDeck():
                     hand_description = "three of a kind"
                     top5cards = list(non_pairs[-2:]) + [pair_values[0]]*3
                 elif len(pair_sequences) > 1:
-                    hand_description = "two pairs"
+                    hand_description = "two pair"
                     top5cards = list(non_pairs[-1:]) + [pair_values[-2]]*2 + [pair_values[-1]]*2
                 elif len(pair_sequences) == 1 and pair_sequences[0] == 2:
                     hand_description = "pair"
@@ -265,7 +275,7 @@ class pokerDeck():
             hand_description = "three of a kind"
             top5cards = list(non_pairs[-2:]) + [pair_values[0]]*3
         elif len(pair_sequences) > 1:
-            hand_description = "two pairs"
+            hand_description = "two pair"
             if len(pair_sequences) == 3:
                 top5cards = [pair_values[-3]] + [pair_values[-2]]*2 + [pair_values[-1]]*2
             else:
@@ -294,7 +304,7 @@ class pokerDeck():
             ranking = 5
         elif description == "three of a kind":
             ranking = 6
-        elif description == "two pairs":
+        elif description == "two pair":
             ranking = 7
         elif description == "pair":
             ranking = 8

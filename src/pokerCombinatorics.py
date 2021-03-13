@@ -31,17 +31,21 @@ def uniq(lst):
 
 def sort_and_deduplicate(l):
     return list(uniq(sorted(l, reverse=True)))
+    
+
+_outs = {}
 
 
 ### Count the number of outs for a straight ###
 
 def countOuts(numbers):
+    numbers_tuple = tuple(numbers)
+    if numbers_tuple in _outs:
+        return _outs[numbers_tuple]
     if 14 in numbers:
         numbers = [1] + numbers
     
-    possibilityList = []
-    for i in range(len(numbers)):
-        possibilityList.append(np.arange(max(numbers[i] - 4, 1), min(numbers[i] + 4, 14) + 1))
+    possibilityList = [np.arange(max(number - 4, 1), min(number + 4, 14) + 1) for number in numbers]
     
     straightPossibilityList = []
     for i in range(len(possibilityList)):
@@ -71,7 +75,7 @@ def countOuts(numbers):
                     outs[j] == [] and outs[j] in newOuts or
                     len(outs[j]) == 1 and outs[j][0] < min(numbers) and outs[j] in newOuts and [] in outs):
                     newOuts.remove(outs[j])
-    
+    _outs[numbers_tuple] = newOuts
     return newOuts
 
 
@@ -95,7 +99,7 @@ def calcProbs(hand, rankType, cardsOnTable, handStatus):
     straightUpperBound = handStatus["straightUpperBound"]
         
     ### We calculate the probabilities using combinatorics ###
-    
+    probability = 0
     if cardsOnTable == "PreFlop":
         totalCombinations = nCr(50, 5)
         if rankType == "Pair":
@@ -366,7 +370,7 @@ def calcProbs(hand, rankType, cardsOnTable, handStatus):
                 probability = 0 # Because you would get full house
         elif rankType == "Straight":
             probRunnerRunner = (StraightRunnerRunner * 4**2) / totalCombinations
-            
+            probSingleRunner = 0
             if NonPair == True:
                 probSingleRunner = (StraightSingleRunner * 4 * 8 * 4) / totalCombinations
             elif Pair == True:
@@ -467,18 +471,20 @@ def calcProbs(hand, rankType, cardsOnTable, handStatus):
     return probability
 
 
-def findHandStatus(hand, table):
+def findHandStatus(hand, table, holeCardsClass=None, table_rank=None, full_rank=None):
     evaluationHand = list(table)
     evaluationHand.extend(hand)
-    
-    ### Initializing the states to False - will update if they turn out to be True ###
-    
-    NonPair = False
-    Pair = False
-    TwoPair = False
-    Triple = False
-    FullHouse = False
-    
+    #
+    # NumSuitSplit = []
+    # hand = np.array([c.split('_') for c in evaluationHand])
+    # for i in range(len(evaluationHand)): NumSuitSplit.append(evaluationHand[i].split("_"))
+    # # numbers_string = np.array(NumSuitSplit)[:,0]
+    # _, count = np.unique(hand[:, 1], return_counts=True)
+    # NumSuited = np.max(count)
+    #
+    # numbers = list(hand[:, 0].astype(np.int32))
+    # numbers.sort()
+
     NumSuitSplit = []
     for i in range(len(evaluationHand)): NumSuitSplit.append(evaluationHand[i].split("_"))
     numbers_string = np.array(NumSuitSplit)[:,0]
@@ -488,49 +494,79 @@ def findHandStatus(hand, table):
     numbers.sort()
     suits.sort()
     
-    pair_sequence = 1
-    pair_sequences = []
-    pair_values = []
+    ### Initializing the states to False - will update if they turn out to be True ###
+    if holeCardsClass is not None:
+        NonPair = holeCardsClass == 'high card'
+        Pair = holeCardsClass == 'pair'
+        TwoPair = False
+        Triple = False
+        FullHouse = False
+    elif table_rank is not None:
+        NonPair = table_rank == 'high card'
+        Pair = table_rank == 'pair'
+        TwoPair = table_rank == 'two pair'
+        Triple = table_rank == 'three of a kind'
+        FullHouse = table_rank == 'full house'
+    elif full_rank is not None:
+        NonPair = full_rank == 'high card'
+        Pair = full_rank == 'pair'
+        TwoPair = full_rank == 'two pair'
+        Triple = full_rank == 'three of a kind'
+        FullHouse = full_rank == 'full house'
+    else:
+        NonPair = False
+        Pair = False
+        TwoPair = False
+        Triple = False
+        FullHouse = False
+    
+        pair_sequence = 1
+        pair_sequences = []
+        pair_values = []
+        tempSuited = 1
+        NumSuited = 1
+        for i in range(1, len(numbers)):
+            diff = numbers[i] - numbers[(i-1)]
+        
+            ### Check for pairs ###
+        
+            if diff == 0:
+                pair_sequence += 1
+                pair = numbers[i]
+                if i == len(numbers) - 1:
+                    pair_values.append(pair)
+                    pair_sequences.append(pair_sequence)
+            else:
+                if pair_sequence > 1:
+                    pair_values.append(pair)
+                    pair_sequences.append(pair_sequence)
+                pair_sequence = 1
+    
+        ### Check for various states ###
+    
+        if len(pair_sequences) > 1 and np.sum(np.array(pair_sequences) == 3) > 0:
+            FullHouse = True
+        elif len(pair_sequences) == 1 and pair_sequences[0] == 3:
+            Triple = True
+        elif len(pair_sequences) > 1:
+            TwoPair = True
+        elif len(pair_sequences) == 1 and pair_sequences[0] == 2:
+            Pair = True
+        elif len(pair_sequences) == 0:
+            NonPair = True
+
     tempSuited = 1
     NumSuited = 1
     for i in range(1, len(numbers)):
-        diff = numbers[i] - numbers[(i-1)]
         
-        ### Check for pairs ###
-        
-        if diff == 0:
-            pair_sequence += 1
-            pair = numbers[i]
-            if i == len(numbers) - 1:
-                pair_values.append(pair)
-                pair_sequences.append(pair_sequence)
-        else:
-            if pair_sequence > 1:
-                pair_values.append(pair)
-                pair_sequences.append(pair_sequence)
-            pair_sequence = 1
-            
         ### Check for number of suited cards ###
-        
+    
         if suits[i] == suits[(i-1)]:
             tempSuited += 1
             if tempSuited > NumSuited:
                 NumSuited = tempSuited
         elif suits[i] != suits[(i-1)]:
             tempSuited = 1
-    
-    ### Check for various states ###
-    
-    if len(pair_sequences) > 1 and np.sum(np.array(pair_sequences) == 3) > 0:
-        FullHouse = True
-    elif len(pair_sequences) == 1 and pair_sequences[0] == 3:
-        Triple = True
-    elif len(pair_sequences) > 1:
-        TwoPair = True
-    elif len(pair_sequences) == 1 and pair_sequences[0] == 2:
-        Pair = True
-    elif len(pair_sequences) == 0:
-        NonPair = True
     
     ### Initialize and begin to fill the dictionary ###
     
@@ -541,7 +577,9 @@ def findHandStatus(hand, table):
     statusDict["Triple"] = Triple
     statusDict["FullHouse"] = FullHouse
     
-    outs = countOuts(numbers)
+    outs = []
+    if len(evaluationHand) < 7:
+        outs = countOuts(numbers)
     
     StraightRunnerRunner = 0
     StraightSingleRunner = 0
@@ -555,11 +593,7 @@ def findHandStatus(hand, table):
     statusDict["StraightSingleRunner"] = StraightSingleRunner
     
     statusDict["NumSuited"] = NumSuited
-    
-    NumSuitSplitHand = []
-    for i in range(len(hand)): NumSuitSplitHand.append(hand[i].split("_")) 
-    hand_numbers_string = np.array(NumSuitSplitHand)[:,0]
-    hand_numbers = list(map(int, hand_numbers_string))
+    hand_numbers = numbers
     
     statusDict["straightGap"] = abs(hand_numbers[0] - hand_numbers[1]) - 1
     statusDict["straightUpperBound"] = max(hand_numbers)

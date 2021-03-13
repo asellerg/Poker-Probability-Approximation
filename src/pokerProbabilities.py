@@ -9,7 +9,7 @@ Created on Fri Apr 13 21:33:52 2018
 import numpy as np
 from pokerCombinatorics import calcProbs, findHandStatus
 
-def fetchProbabilityArray(hand, table, currentHandRank):
+def fetchProbabilityArray(hand, table, currentHandRank, full_rank=None):
     """
     the array has the following probabilities:
         [straight flush, four of a kind, full house, flush, straight, three of a kind, two pair, pair]
@@ -28,7 +28,7 @@ def fetchProbabilityArray(hand, table, currentHandRank):
     elif numCardsOnTable == 5:
         cardsOnTable = "River"
         
-    handStatus = findHandStatus(hand, table)
+    handStatus = findHandStatus(hand, table, full_rank=full_rank)
     
     if cardsOnTable == "River":
         probabilityArray[:(currentHandRank - 1)] = 0
@@ -77,7 +77,7 @@ def simulateProbability(hand, table, deck, simulations):
     return probability_array
 
 
-def statusDictToInputArray(statusDict, hand_or_table, cards, tableDeck):
+def statusDictToInputArray(statusDict, hand_or_table, cards, tableDeck, table_rank=None):
     
     ### We are taking the hand/board states and converting them into input vectors, which will be stored in an array ###
     
@@ -121,7 +121,8 @@ def statusDictToInputArray(statusDict, hand_or_table, cards, tableDeck):
             single_runner_status = 1 if statusDict['StraightSingleRunner'] == True else 0
 
             tableDeck.table = cards
-            table_rank, _ = tableDeck.evaluateHand([])
+            if table_rank is None:
+                table_rank, _ = tableDeck.evaluateHand([])
             if table_rank == "straight":
                 additional_table_status = [1,0,0,0]
             elif table_rank == "flush":
